@@ -5,7 +5,7 @@
 	<key>CFBundleAllowMixedLocalizations</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>en_US</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -119,6 +119,8 @@
 				<string>com.apple.disk-image-ndif</string>
 				<string>com.goldenhawk.cdrwin-cuesheet</string>
 				<string>public.iso-image</string>
+				<string>com.apple.macbinary-​archive</string>
+				<string>com.coppertino.vox.cue</string>
 			</array>
 			<key>LSTypeIsPackage</key>
 			<false/>
@@ -158,8 +160,6 @@
 	<string>SVNREVISION</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.games</string>
-	<key>LSHasLocalizedDisplayName</key>
-	<true/>
 	<key>LSMinimumSystemVersion</key>
 	<string>${MACOSX_DEPLOYMENT_TARGET}</string>
 	<key>NSMainNibFile</key>

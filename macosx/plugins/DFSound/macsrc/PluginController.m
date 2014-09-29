@@ -11,7 +11,7 @@
 //If running under Mac OS X, use the Localizable.strings file instead.
 #elif defined(_MACOSX)
 #ifdef PCSXRCORE
-__private_extern__ char* Pcsxr_locale_text(char* toloc);
+__private_extern char* Pcsxr_locale_text(char* toloc);
 #define _(String) Pcsxr_locale_text(String)
 #define N_(String) String
 #else
@@ -24,7 +24,7 @@ __private_extern__ char* Pcsxr_locale_text(char* toloc);
 #define PLUGLOC_x(x,y) x ## y
 #define PLUGLOC_y(x,y) PLUGLOC_x(x,y)
 #define PLUGLOC PLUGLOC_y(PCSXRPLUG,_locale_text)
-__private_extern__ char* PLUGLOC(char* toloc);
+__private_extern char* PLUGLOC(char* toloc);
 #define _(String) PLUGLOC(String)
 #define N_(String) String
 #endif
@@ -56,12 +56,15 @@ void DoAbout()
 {
 	// Get parent application instance
 	NSBundle *bundle = [NSBundle bundleWithIdentifier:APP_ID];
-
+	
 	// Get Credits.rtf
 	NSString *path = [bundle pathForResource:@"Credits" ofType:@"rtf"];
 	NSAttributedString *credits;
+	if (!path) {
+		path = [bundle pathForResource:@"Credits" ofType:@"rtfd"];
+	}
 	if (path) {
-		credits =  [[NSAttributedString alloc] initWithPath: path documentAttributes:NULL];
+		credits = [[NSAttributedString alloc] initWithPath:path documentAttributes:NULL];
 	} else {
 		credits = [[NSAttributedString alloc] initWithString:@""];
 	}
@@ -70,14 +73,14 @@ void DoAbout()
 	NSImage *icon = [[NSWorkspace sharedWorkspace] iconForFile:[bundle bundlePath]];
 	NSSize size = NSMakeSize(64, 64);
 	[icon setSize:size];
-		
+	
 	NSDictionary *infoPaneDict =
 	@{@"ApplicationName": [bundle objectForInfoDictionaryKey:@"CFBundleName"],
-	 @"ApplicationIcon": icon,
-	 @"ApplicationVersion": [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],
-	 @"Version": [bundle objectForInfoDictionaryKey:@"CFBundleVersion"],
-	 @"Copyright": [bundle objectForInfoDictionaryKey:@"NSHumanReadableCopyright"],
-	 @"Credits": credits};
+	  @"ApplicationIcon": icon,
+	  @"ApplicationVersion": [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],
+	  @"Version": [bundle objectForInfoDictionaryKey:@"CFBundleVersion"],
+	  @"Copyright": [bundle objectForInfoDictionaryKey:@"NSHumanReadableCopyright"],
+	  @"Credits": credits};
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[NSApp orderFrontStandardAboutPanelWithOptions:infoPaneDict];
 	});
@@ -107,13 +110,14 @@ void ReadConfig(void)
 {
 	NSDictionary *keyValues;
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	[defaults registerDefaults:@{PrefsKey: @{@"High Compatibility Mode": @YES,
-								 @"SPU IRQ Wait": @YES,
-								 @"XA Pitch": @NO,
-								 @"Mono Sound Output": @NO,
-								 @"Interpolation Quality": @0,
-								 @"Reverb Quality": @1,
-								 @"Volume": @3}}];
+	[defaults registerDefaults:
+	 @{PrefsKey: @{@"High Compatibility Mode": @YES,
+				   @"SPU IRQ Wait": @YES,
+				   @"XA Pitch": @NO,
+				   @"Mono Sound Output": @NO,
+				   @"Interpolation Quality": @0,
+				   @"Reverb Quality": @1,
+				   @"Volume": @3}}];
 	
 	keyValues = [defaults dictionaryForKey:PrefsKey];
 	

@@ -59,7 +59,7 @@ static int iOldMode=0;
 #define N_(x) (x)
 #elif defined(_MACOSX)
 #ifdef PCSXRCORE
-__private_extern__ char* Pcsxr_locale_text(char* toloc);
+__private_extern char* Pcsxr_locale_text(char* toloc);
 #define _(String) Pcsxr_locale_text(String)
 #define N_(String) String
 #else
@@ -72,7 +72,7 @@ __private_extern__ char* Pcsxr_locale_text(char* toloc);
 #define PLUGLOC_x(x,y) x ## y
 #define PLUGLOC_y(x,y) PLUGLOC_x(x,y)
 #define PLUGLOC PLUGLOC_y(PCSXRPLUG,_locale_text)
-__private_extern__ char* PLUGLOC(char* toloc);
+__private_extern char* PLUGLOC(char* toloc);
 #define _(String) PLUGLOC(String)
 #define N_(String) String
 #endif
@@ -2902,10 +2902,14 @@ STARTVRAM:
 
        gdata=*pMem++;
 
-       *VRAMWrite.ImagePtr++ = (unsigned short)gdata;
-       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;
+       // Write odd pixel - Wrap from beginning to next index if going past GPU width
+       if(VRAMWrite.Width+VRAMWrite.x-VRAMWrite.RowsRemaining >= 1024) {
+         *((VRAMWrite.ImagePtr++)-1024) = (unsigned short)gdata;
+       } else { *VRAMWrite.ImagePtr++ = (unsigned short)gdata;}
+       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;// Check if went past framebuffer
        VRAMWrite.RowsRemaining --;
 
+       // Check if end at odd pixel drawn
        if(VRAMWrite.RowsRemaining <= 0)
         {
          VRAMWrite.ColsRemaining--;
@@ -2919,8 +2923,11 @@ STARTVRAM:
          VRAMWrite.ImagePtr += 1024 - VRAMWrite.Width;
         }
 
-       *VRAMWrite.ImagePtr++ = (unsigned short)(gdata>>16);
-       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;
+       // Write even pixel - Wrap from beginning to next index if going past GPU width
+       if(VRAMWrite.Width+VRAMWrite.x-VRAMWrite.RowsRemaining >= 1024) {
+         *((VRAMWrite.ImagePtr++)-1024) = (unsigned short)(gdata>>16);
+       } else *VRAMWrite.ImagePtr++ = (unsigned short)(gdata>>16);
+       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;// Check if went past framebuffer
        VRAMWrite.RowsRemaining --;
       }
 

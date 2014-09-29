@@ -25,6 +25,7 @@
 #include "cdrom.h"
 #include "mdec.h"
 #include "ppf.h"
+#include <stddef.h>
 
 char CdromId[10] = "";
 char CdromLabel[33] = "";
@@ -173,9 +174,9 @@ int LoadCdrom() {
 		// read the SYSTEM.CNF
 		READTRACK();
 
-		sscanf((char *)buf + 12, "BOOT = cdrom:\\%256s", exename);
+		sscanf((char *)buf + 12, "BOOT = cdrom:\\%255s", exename);
 		if (GetCdromFile(mdir, time, exename) == -1) {
-			sscanf((char *)buf + 12, "BOOT = cdrom:%256s", exename);
+			sscanf((char *)buf + 12, "BOOT = cdrom:%255s", exename);
 			if (GetCdromFile(mdir, time, exename) == -1) {
 				char *ptr = strstr(buf + 12, "cdrom:");
 				if (ptr != NULL) {
@@ -229,7 +230,7 @@ int LoadCdromFile(const char *filename, EXE_HEADER *head) {
 	u8 mdir[4096], exename[256];
 	u32 size, addr;
 
-	sscanf(filename, "cdrom:\\%256s", exename);
+	sscanf(filename, "cdrom:\\%255s", exename);
 
 	time[0] = itob(0); time[1] = itob(2); time[2] = itob(0x10);
 
@@ -298,9 +299,9 @@ int CheckCdrom() {
 	if (GetCdromFile(mdir, time, "SYSTEM.CNF;1") != -1) {
 		READTRACK();
 
-		sscanf((char *)buf + 12, "BOOT = cdrom:\\%256s", exename);
+		sscanf((char *)buf + 12, "BOOT = cdrom:\\%255s", exename);
 		if (GetCdromFile(mdir, time, exename) == -1) {
-			sscanf((char *)buf + 12, "BOOT = cdrom:%256s", exename);
+			sscanf((char *)buf + 12, "BOOT = cdrom:%255s", exename);
 			if (GetCdromFile(mdir, time, exename) == -1) {
 				char *ptr = strstr(buf + 12, "cdrom:");			// possibly the executable is in some subdir
 				if (ptr != NULL) {
@@ -336,10 +337,10 @@ int CheckCdrom() {
 
 	if (Config.PsxAuto) { // autodetect system (pal or ntsc)
 		if((CdromId[2] == 'e') || (CdromId[2] == 'E') ||
-			!strncmp(CdromId, "\0DTLS3035", 10) ||
-			!strncmp(CdromId, "PBPX95001", 10) || // according to redump.org, these PAL
-			!strncmp(CdromId, "PBPX95007", 10) || // discs have a non-standard ID;
-			!strncmp(CdromId, "PBPX95008", 10))   // add more serials if they are discovered.
+			!strncmp(CdromId, "DTLS3035", 8) ||
+			!strncmp(CdromId, "PBPX95001", 9) || // according to redump.org, these PAL
+			!strncmp(CdromId, "PBPX95007", 9) || // discs have a non-standard ID;
+			!strncmp(CdromId, "PBPX95008", 9))   // add more serials if they are discovered.
 			Config.PsxType = PSX_TYPE_PAL; // pal
 		else Config.PsxType = PSX_TYPE_NTSC; // ntsc
 	}
@@ -499,7 +500,8 @@ int Load(const char *ExePath) {
 }
 
 // STATES
-
+#define PCSXR_HEADER_SZ (10)
+#define SZ_GPUPIC (128 * 96 * 3)
 static const char PcsxrHeader[32] = "STv4 PCSXR v" PACKAGE_VERSION;
 
 // Savestate Versioning!
@@ -508,23 +510,150 @@ static const u32 SaveVersion = 0x8b410008;
 
 int SaveState(const char *file) {
 	gzFile f;
-	GPUFreeze_t *gpufP;
-	SPUFreeze_t *spufP;
-	int Size;
-	unsigned char *pMem;
+	long size;
 
-	f = gzopen(file, "wb");
+	f = gzopen(file, "wb9"); // Best ratio but slow
 	if (f == NULL) return -1;
+	return SaveStateGz(f, &size);
+}
 
-	gzwrite(f, (void *)PcsxrHeader, 32);
+int LoadState(const char *file) {
+	gzFile f;
+
+	f = gzopen(file, "rb");
+	if (f == NULL) return -1;
+	return LoadStateGz(f);
+}
+
+u32 mem_cur_save_count=0, mem_last_save;
+boolean mem_wrapped=FALSE; // Whether we went past max count and restarted counting
+
+void CreateRewindState() {
+	if (Config.RewindCount > 0) {
+		SaveStateMem(mem_last_save=mem_cur_save_count++);
+
+		if (mem_cur_save_count > Config.RewindCount) {
+			mem_cur_save_count = 0;
+			mem_wrapped=TRUE;
+		}
+	}
+}
+
+void RewindState() {
+	mem_cur_save_count--;
+	if (mem_cur_save_count > Config.RewindCount && mem_wrapped) { 
+		mem_cur_save_count = Config.RewindCount;
+		mem_wrapped = FALSE;
+	} else if (mem_cur_save_count > Config.RewindCount && !mem_wrapped) {
+		mem_cur_save_count++;
+		return;
+	} else if (mem_last_save == mem_cur_save_count-1) {
+		mem_cur_save_count = 0;
+		return;
+	}
+	LoadStateMem(mem_cur_save_count);
+}
+
+GPUFreeze_t *gpufP = NULL;
+SPUFreeze_t *spufP = NULL;
+
+/* 
+Pros of using SHM
++ No need to change SaveState interface (gzip OK)
++ Possibiliy to preserve saves after pcsxr crash
+
+Cons of using SHM
+- UNIX only
+- Possibility of leaving left over shm files
+- Possibly not the quickest way to allocate memory
+
+*/
+#if !defined(NO_RT_SHM) && !defined(_WINDOWS) && !defined(_WIN32)
+#include <sys/mman.h>
+#include <sys/stat.h> /* For mode constants */
+#include <fcntl.h> /* For O_* constants */
+#include <errno.h>
+
+#define SHM_SS_NAME_TEMPLATE "/pcsxrmemsavestate%.4u"
+
+int SaveStateMem(const u32 id) {
+	char name[32];
+	int ret = -1;
+
+	snprintf(name, 32, SHM_SS_NAME_TEMPLATE, id);
+	int fd = shm_open(name, O_CREAT | O_RDWR | O_TRUNC, 0666);
+
+	if (fd >= 0) {
+		gzFile f = gzdopen(fd, "wb0T"); // Fast and no compression
+		//gzbuffer(f, 64*1024);
+		//assert(gzdirect(f) == TRUE);
+		if (f != NULL) {
+			ret = SaveStateGz(f, NULL);
+			//printf("Saved %s/%i (ID: %i SZ: %lik)\n", name, fd, id, size/1024);
+		} else {
+			SysMessage("GZ OPEN FAIL %i\n", errno );
+		}
+	} else {
+		SysMessage("FD OPEN FAIL %i\n", errno );
+	}
+	return ret;
+}
+
+int LoadStateMem(const u32 id) {
+	char name[32];
+	int ret = -1;
+
+	snprintf(name, 32, SHM_SS_NAME_TEMPLATE, id);
+	int fd = shm_open(name, O_RDONLY, 0444);
+
+	if (fd >= 0) {
+		gzFile f = gzdopen(fd, "rb");
+		if (f != NULL) {
+			ret = LoadStateGz(f);
+			//printf("Loaded %s/%i (ID: %i RET: %i)\n", name, fd, id, ret);
+			shm_unlink(name);
+		} else {
+			SysMessage("GZ OPEN FAIL %i\n", errno);
+		}
+	} else {
+		SysMessage("FD OPEN FAIL %i (%s)\n", errno, name);
+	}
+	return ret;
+}
+
+void CleanupMemSaveStates() {
+	char name[32];
+	u32 i;
+	
+	for (i=0; i <= Config.RewindCount; i++) {
+		snprintf(name, sizeof(name), SHM_SS_NAME_TEMPLATE, i);
+		if (shm_unlink(name) != 0) {
+			//break;
+		}
+	}
+	free(gpufP);
+	gpufP = NULL;
+	free(spufP);
+	spufP = NULL;
+}
+#else
+int SaveStateMem(const u32 id) {return 0;}
+int LoadStateMem(const u32 id) {return 0;}
+void CleanupMemSaveStates() {}
+#endif
+
+int SaveStateGz(gzFile f, long* gzsize) {
+	int Size;
+	unsigned char pMemGpuPic[SZ_GPUPIC];
+
+	//if (f == NULL) return -1;
+
+	gzwrite(f, (void *)PcsxrHeader, sizeof(PcsxrHeader));
 	gzwrite(f, (void *)&SaveVersion, sizeof(u32));
 	gzwrite(f, (void *)&Config.HLE, sizeof(boolean));
 
-	pMem = (unsigned char *)malloc(128 * 96 * 3);
-	if (pMem == NULL) return -1;
-	GPU_getScreenPic(pMem);
-	gzwrite(f, pMem, 128 * 96 * 3);
-	free(pMem);
+	if (gzsize)GPU_getScreenPic(pMemGpuPic); // Not necessary with ephemeral saves
+	gzwrite(f, pMemGpuPic, SZ_GPUPIC);
 
 	if (Config.HLE)
 		psxBiosFreeze(1);
@@ -535,23 +664,32 @@ int SaveState(const char *file) {
 	gzwrite(f, (void *)&psxRegs, sizeof(psxRegs));
 
 	// gpu
-	gpufP = (GPUFreeze_t *)malloc(sizeof(GPUFreeze_t));
+	if (!gpufP)gpufP = (GPUFreeze_t *)malloc(sizeof(GPUFreeze_t));
 	gpufP->ulFreezeVersion = 1;
 	GPU_freeze(1, gpufP);
 	gzwrite(f, gpufP, sizeof(GPUFreeze_t));
-	free(gpufP);
 
+	// SPU Plugin cannot change during run, so we query size info just once per session
+	if (!spufP) {
+		spufP = (SPUFreeze_t *)malloc(offsetof(SPUFreeze_t, SPUPorts)); // only first 3 elements (up to Size)        
+		SPU_freeze(2, spufP);
+		Size = spufP->Size;
+		SysPrintf("SPUFreezeSize %i/(%i)\n", Size, offsetof(SPUFreeze_t, SPUPorts));
+		free(spufP);
+		spufP = (SPUFreeze_t *) malloc(Size);
+		spufP->Size = Size;
+
+		if (spufP->Size <= 0) {
+			gzclose(f);
+			free(spufP);
+			spufP = NULL;
+			return 1; // error
+		}
+	}
 	// spu
-	spufP = (SPUFreeze_t *) malloc(16); // only first 3 elements (up to Size)
-	SPU_freeze(2, spufP);
-	Size = spufP->Size; gzwrite(f, &Size, 4);
-	if (Size <= 0)
-		return 1; // error
-	free(spufP);
-	spufP = (SPUFreeze_t *) malloc(Size);
+	gzwrite(f, &(spufP->Size), 4);
 	SPU_freeze(1, spufP);
-	gzwrite(f, spufP, Size);
-	free(spufP);
+	gzwrite(f, spufP, spufP->Size);
 
 	sioFreeze(f, 1);
 	cdrFreeze(f, 1);
@@ -559,34 +697,33 @@ int SaveState(const char *file) {
 	psxRcntFreeze(f, 1);
 	mdecFreeze(f, 1);
 
+	if(gzsize)*gzsize = gztell(f);
 	gzclose(f);
 
 	return 0;
 }
 
-int LoadState(const char *file) {
-	gzFile f;
-	GPUFreeze_t *gpufP;
-	SPUFreeze_t *spufP;
+int LoadStateGz(gzFile f) {
+	SPUFreeze_t *_spufP;
 	int Size;
-	char header[32];
+	char header[sizeof(PcsxrHeader)];
 	u32 version;
 	boolean hle;
 
-	f = gzopen(file, "rb");
 	if (f == NULL) return -1;
 
 	gzread(f, header, sizeof(header));
 	gzread(f, &version, sizeof(u32));
 	gzread(f, &hle, sizeof(boolean));
 
-	if (strncmp("STv4 PCSXR", header, 10) != 0 || version != SaveVersion || hle != Config.HLE) {
+	// Compare header only "STv4 PCSXR" part no version
+	if (strncmp(PcsxrHeader, header, PCSXR_HEADER_SZ) != 0 || version != SaveVersion || hle != Config.HLE) {
 		gzclose(f);
 		return -1;
 	}
 
 	psxCpu->Reset();
-	gzseek(f, 128 * 96 * 3, SEEK_CUR);
+	gzseek(f, SZ_GPUPIC, SEEK_CUR);
 
 	gzread(f, psxM, 0x00200000);
 	gzread(f, psxR, 0x00080000);
@@ -597,17 +734,16 @@ int LoadState(const char *file) {
 		psxBiosFreeze(0);
 
 	// gpu
-	gpufP = (GPUFreeze_t *)malloc(sizeof(GPUFreeze_t));
+	if (!gpufP)gpufP = (GPUFreeze_t *)malloc(sizeof(GPUFreeze_t));
 	gzread(f, gpufP, sizeof(GPUFreeze_t));
 	GPU_freeze(0, gpufP);
-	free(gpufP);
 
 	// spu
 	gzread(f, &Size, 4);
-	spufP = (SPUFreeze_t *)malloc(Size);
-	gzread(f, spufP, Size);
-	SPU_freeze(0, spufP);
-	free(spufP);
+	_spufP = (SPUFreeze_t *)malloc(Size);
+	gzread(f, _spufP, Size);
+	SPU_freeze(0, _spufP);
+	free(_spufP);
 
 	sioFreeze(f, 0);
 	cdrFreeze(f, 0);
@@ -622,7 +758,7 @@ int LoadState(const char *file) {
 
 int CheckState(const char *file) {
 	gzFile f;
-	char header[32];
+	char header[sizeof(PcsxrHeader)];
 	u32 version;
 	boolean hle;
 
@@ -635,7 +771,8 @@ int CheckState(const char *file) {
 
 	gzclose(f);
 
-	if (strncmp("STv4 PCSXR", header, 10) != 0 || version != SaveVersion || hle != Config.HLE)
+	// Compare header only "STv4 PCSXR" part no version
+	if (strncmp(PcsxrHeader, header, PCSXR_HEADER_SZ) != 0 || version != SaveVersion || hle != Config.HLE)
 		return -1;
 
 	return 0;

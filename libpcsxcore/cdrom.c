@@ -445,9 +445,6 @@ static void ReadTrack(const u8 *time) {
 	cdr.RErr = CDR_readTrack(tmp);
 	memcpy(cdr.Prev, tmp, 3);
 
-	if (CheckSBI(time))
-		return;
-
 	subq = (struct SubQ *)CDR_getBufferSub();
 	if (subq != NULL && cdr.CurTrack == 1) {
 		crc = calcCrc((u8 *)subq + 12, 10);
@@ -706,7 +703,7 @@ void cdrInterrupt() {
 			ReadTrack(cdr.SetSectorPlay);
 			cdr.TrackChanged = FALSE;
 
-			if (!Config.Cdda)
+			if (Config.Cdda != CDDA_DISABLED)
 				CDR_play(cdr.SetSectorPlay);
 
 			// Vib Ribbon: gameplay checks flag
@@ -851,6 +848,8 @@ void cdrInterrupt() {
 			SetResultSize(8);
 			memcpy(&cdr.Result, &cdr.subq, 8);
 
+			if (!cdr.Play && CheckSBI(cdr.Result+5))
+				memset(cdr.Result+2, 0, 6);
 			if (!cdr.Play && !cdr.Reading)
 				cdr.Result[1] = 0; // HACK?
 			break;
@@ -1583,7 +1582,7 @@ void cdrReset() {
 int cdrFreeze(gzFile f, int Mode) {
 	u8 tmpp[3];
 
-	if (Mode == 0 && !Config.Cdda)
+	if (Mode == 0 && Config.Cdda != CDDA_DISABLED)
 		CDR_stop();
 	
 	gzfreeze(&cdr, sizeof(cdr));
@@ -1601,7 +1600,7 @@ int cdrFreeze(gzFile f, int Mode) {
 
 		if (cdr.Play) {
 			Find_CurTrack(cdr.SetSectorPlay);
-			if (!Config.Cdda)
+			if (Config.Cdda != CDDA_DISABLED)
 				CDR_play(cdr.SetSectorPlay);
 		}
 	}

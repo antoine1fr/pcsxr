@@ -35,6 +35,6 @@
 - (IBAction)ok:(id)sender;
 @end
 
-extern NSDictionary *DefaultPadArray(int padnum);
-extern void LoadPadArray(int padnum, NSDictionary *nsPrefs);
-extern NSDictionary *SavePadArray(int padnum);
+__private_extern NSDictionary *DefaultPadArray(int padnum);
+__private_extern void LoadPadArray(int padnum, NSDictionary *nsPrefs);
+__private_extern NSDictionary *SavePadArray(int padnum);

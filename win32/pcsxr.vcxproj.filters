@@ -117,6 +117,39 @@
     <ClCompile Include="gui\WndMain.c">
       <Filter>gui</Filter>
     </ClCompile>
+    <ClCompile Include="intl\bindtextdom.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\dcgettext.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\dgettext.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\explodename.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\finddomain.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\gettext.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\intl-compat.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\l10nflist.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\loadmsgcat.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\localealias.c">
+      <Filter>intl</Filter>
+    </ClCompile>
+    <ClCompile Include="intl\textdomain.c">
+      <Filter>intl</Filter>
+    </ClCompile>
     <ClCompile Include="zlib\adler32.c">
       <Filter>zlib</Filter>
     </ClCompile>
@@ -158,39 +191,6 @@
     </ClCompile>
     <ClCompile Include="zlib\zutil.c">
       <Filter>zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\bindtextdom.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\dcgettext.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\dgettext.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\explodename.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\finddomain.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\gettext.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\intl-compat.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\l10nflist.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\loadmsgcat.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\localealias.c">
-      <Filter>intl</Filter>
-    </ClCompile>
-    <ClCompile Include="intl\textdomain.c">
-      <Filter>intl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -293,6 +293,35 @@
     <ClInclude Include="gui\Win32.h">
       <Filter>gui</Filter>
     </ClInclude>
+    <ClInclude Include="glue\stdint.h">
+      <Filter>glue</Filter>
+    </ClInclude>
+    <ClInclude Include="glue\sys\mman.h">
+      <Filter>glue\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="intl\gettext.h">
+      <Filter>intl</Filter>
+    </ClInclude>
+    <ClInclude Include="intl\gettextP.h">
+      <Filter>intl</Filter>
+    </ClInclude>
+    <ClInclude Include="intl\hash-string.h">
+      <Filter>intl</Filter>
+    </ClInclude>
+    <ClInclude Include="intl\intlconfig.h">
+      <Filter>intl</Filter>
+    </ClInclude>
+    <ClInclude Include="intl\libgettext.h">
+      <Filter>intl</Filter>
+    </ClInclude>
+    <ClInclude Include="intl\libintl.h">
+      <Filter>intl</Filter>
+    </ClInclude>
+    <ClInclude Include="intl\loadinfo.h">
+      <Filter>intl</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="zlib\deflate.h">
       <Filter>zlib</Filter>
     </ClInclude>
@@ -326,35 +355,6 @@
     <ClInclude Include="zlib\zutil.h">
       <Filter>zlib</Filter>
     </ClInclude>
-    <ClInclude Include="glue\stdint.h">
-      <Filter>glue</Filter>
-    </ClInclude>
-    <ClInclude Include="glue\sys\mman.h">
-      <Filter>glue\sys</Filter>
-    </ClInclude>
-    <ClInclude Include="intl\gettext.h">
-      <Filter>intl</Filter>
-    </ClInclude>
-    <ClInclude Include="intl\gettextP.h">
-      <Filter>intl</Filter>
-    </ClInclude>
-    <ClInclude Include="intl\hash-string.h">
-      <Filter>intl</Filter>
-    </ClInclude>
-    <ClInclude Include="intl\intlconfig.h">
-      <Filter>intl</Filter>
-    </ClInclude>
-    <ClInclude Include="intl\libgettext.h">
-      <Filter>intl</Filter>
-    </ClInclude>
-    <ClInclude Include="intl\libintl.h">
-      <Filter>intl</Filter>
-    </ClInclude>
-    <ClInclude Include="intl\loadinfo.h">
-      <Filter>intl</Filter>
-    </ClInclude>
-    <ClInclude Include="config.h" />
-    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="gui\about.bmp">

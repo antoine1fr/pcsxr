@@ -42,7 +42,7 @@
 //If running under Mac OS X, use the Localizable.strings file instead.
 #elif defined(_MACOSX)
 #ifdef PCSXRCORE
-__private_extern__ char* Pcsxr_locale_text(char* toloc);
+__private_extern char* Pcsxr_locale_text(char* toloc);
 #define _(String) Pcsxr_locale_text(String)
 #define N_(String) String
 #else
@@ -55,7 +55,7 @@ __private_extern__ char* Pcsxr_locale_text(char* toloc);
 #define PLUGLOC_x(x,y) x ## y
 #define PLUGLOC_y(x,y) PLUGLOC_x(x,y)
 #define PLUGLOC PLUGLOC_y(PCSXRPLUG,_locale_text)
-__private_extern__ char* PLUGLOC(char* toloc);
+__private_extern char* PLUGLOC(char* toloc);
 #define _(String) PLUGLOC(String)
 #define N_(String) String
 #endif
@@ -819,10 +819,10 @@ void ChangeWindowMode(void)                            // TOGGLE FULLSCREEN - WI
 
 void ChangeWindowMode(void)                            // TOGGLE FULLSCREEN - WINDOW
 {
- extern Display         *display;
+ extern Display       *display;
  extern Window        window;
  extern int           root_window_id;
- Screen 		*screen;
+ extern Screen        *screen;
  XSizeHints           hints;
  MotifWmHints         mwmhints;
  Atom                 mwmatom;
@@ -1495,10 +1495,14 @@ STARTVRAM:
 
        gdata=GETLE32(pMem); pMem++;
 
-       PUTLE16(VRAMWrite.ImagePtr, (unsigned short)gdata); VRAMWrite.ImagePtr++;
-       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;
+       // Write odd pixel - Wrap from beginning to next index if going past GPU width
+       if(VRAMWrite.Width+VRAMWrite.x-VRAMWrite.RowsRemaining >= 1024) {
+         PUTLE16(VRAMWrite.ImagePtr-1024, (unsigned short)gdata); VRAMWrite.ImagePtr++;
+       } else { PUTLE16(VRAMWrite.ImagePtr, (unsigned short)gdata); VRAMWrite.ImagePtr++; }
+       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;// Check if went past framebuffer
        VRAMWrite.RowsRemaining --;
 
+       // Check if end at odd pixel drawn
        if(VRAMWrite.RowsRemaining <= 0)
         {
          VRAMWrite.ColsRemaining--;
@@ -1513,8 +1517,11 @@ STARTVRAM:
          VRAMWrite.ImagePtr += 1024 - VRAMWrite.Width;
         }
 
-       PUTLE16(VRAMWrite.ImagePtr, (unsigned short)(gdata>>16)); VRAMWrite.ImagePtr++;
-       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;
+       // Write even pixel - Wrap from beginning to next index if going past GPU width
+       if(VRAMWrite.Width+VRAMWrite.x-VRAMWrite.RowsRemaining >= 1024) {
+         PUTLE16(VRAMWrite.ImagePtr-1024, (unsigned short)(gdata>>16)); VRAMWrite.ImagePtr++;
+       } else { PUTLE16(VRAMWrite.ImagePtr, (unsigned short)(gdata>>16)); VRAMWrite.ImagePtr++; }
+       if(VRAMWrite.ImagePtr>=psxVuw_eom) VRAMWrite.ImagePtr-=iGPUHeight*1024;// Check if went past framebuffer
        VRAMWrite.RowsRemaining --;
       }
 

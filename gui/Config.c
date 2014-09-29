@@ -66,7 +66,7 @@ static boolean GetValueb(char *src, char *name) {
 	fprintf(f, "%s = %s\n", name, var);
 
 #define SetValuel(name, var) \
-	fprintf(f, "%s = %x\n", name, var);
+	fprintf(f, "%s = %li\n", name, var);
 
 #define SetValueb(name, var) \
 	fprintf(f, "%s = %d\n", name, (var) ? 1 : 0);
@@ -103,7 +103,10 @@ int LoadConfig(PcsxConfig *Conf) {
 	if (f == NULL) return -1;
 
 	data = (char *)malloc(size + 1);
-	if (data == NULL) return -1;
+	if (data == NULL) {
+		fclose(f);
+		return -1;
+	}
 
 	fread(data, 1, buf.st_size, f);
 	fclose(f);
@@ -130,7 +133,7 @@ int LoadConfig(PcsxConfig *Conf) {
 	Config.SioIrq  = GetValueb(data, "SioIrq");
 	Config.Mdec    = GetValueb(data, "Mdec");
 	Config.PsxAuto = GetValueb(data, "PsxAuto");
-	Config.Cdda    = GetValueb(data, "Cdda");
+	Config.Cdda    = GetValuel(data, "Cdda");
 	Config.SlowBoot= GetValueb(data, "SlowBoot");
 	Config.Debug   = GetValueb(data, "Dbg");
 	Config.PsxOut  = (Config.PsxOut || GetValueb(data, "PsxOut"));
@@ -142,6 +145,10 @@ int LoadConfig(PcsxConfig *Conf) {
 
 	Config.Cpu     = GetValuel(data, "Cpu");
 	Config.PsxType = GetValuel(data, "PsxType");
+	Config.RewindCount = GetValuel(data, "RewindCount");
+	Config.RewindInterval = GetValuel(data, "RewindInterval");
+
+	Config.HackFix = GetValuel(data, "HackFix");
 
 	free(data);
 
@@ -177,7 +184,7 @@ void SaveConfig() {
 	SetValueb("SioIrq",  Config.SioIrq);
 	SetValueb("Mdec",    Config.Mdec);
 	SetValueb("PsxAuto", Config.PsxAuto);
-	SetValueb("Cdda",    Config.Cdda);
+	SetValuel("Cdda",    Config.Cdda);
 	SetValueb("SlowBoot",Config.SlowBoot);
 	SetValueb("Dbg",     Config.Debug);
 	SetValueb("PsxOut",  Config.PsxOut);
@@ -189,6 +196,10 @@ void SaveConfig() {
 
 	SetValuel("Cpu",     Config.Cpu);
 	SetValuel("PsxType", Config.PsxType);
+	SetValuel("RewindCount", Config.RewindCount);
+	SetValuel("RewindInterval", Config.RewindInterval);
+
+	SetValuel("HackFix", Config.HackFix);
 
 	fclose(f);
 }

@@ -18,7 +18,6 @@
  
  /* this is a borderless window that can be dragged about. Also, holds a GLView */
 #import <Cocoa/Cocoa.h>
-#import <AppKit/NSMenu.h>
 
 @interface NetSfPeopsOpenGLGPUPluginWindow : NSWindow
 {
@@ -26,13 +25,7 @@
     NSPoint initialLocation;
 }
 
-- (id) initWithContentRect: (NSRect) contentRect
-                 styleMask: (NSUInteger) aStyle
-                   backing: (NSBackingStoreType) bufferingType
-                     defer: (BOOL) flag ;
-
-
-- (BOOL) canBecomeKeyWindow; // to stop the beeping
+@property (readonly) BOOL canBecomeKeyWindow; // to stop the beeping
 
 - (void) sendEvent:(NSEvent *)theEvent;
 - (void) windowDidResize:(NSNotification*)notice;
@@ -46,8 +39,5 @@
 - (void)keyDown:(NSEvent *)theEvent;
 - (void)keyUp:(NSEvent *)theEvent;
 
-@end
-
-@interface NetSfPeopsOpenGLGPUPluginWindow (NSMenuValidation) 
 - (BOOL)validateMenuItem:(NSMenuItem*) item;
 @end

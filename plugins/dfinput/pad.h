@@ -38,6 +38,7 @@ extern "C" {
 #include <SDL_joystick.h>
 #if SDL_VERSION_ATLEAST(2,0,0)
 #include <SDL_haptic.h>
+#include <SDL_gamecontroller.h>
 #endif
 
 #ifdef _MACOSX
@@ -61,7 +62,7 @@ typedef void *Display;
 //If running under Mac OS X, use the Localizable.strings file instead.
 #elif defined(_MACOSX)
 #ifdef PCSXRCORE
-__private_extern__ char* Pcsxr_locale_text(char* toloc);
+__private_extern char* Pcsxr_locale_text(char* toloc);
 #define _(String) Pcsxr_locale_text(String)
 #define N_(String) String
 #else
@@ -74,7 +75,7 @@ __private_extern__ char* Pcsxr_locale_text(char* toloc);
 #define PLUGLOC_x(x,y) x ## y
 #define PLUGLOC_y(x,y) PLUGLOC_x(x,y)
 #define PLUGLOC PLUGLOC_y(PCSXRPLUG,_locale_text)
-__private_extern__ char* PLUGLOC(char* toloc);
+__private_extern char* PLUGLOC(char* toloc);
 #define _(String) PLUGLOC(String)
 #define N_(String) String
 #endif
@@ -119,6 +120,7 @@ enum {
 	EMU_SAVESTATE,
 	EMU_SCREENSHOT,
 	EMU_ESCAPE,
+	EMU_REWIND,
 
 	EMU_TOTAL
 };
@@ -146,12 +148,19 @@ typedef struct tagKeyDef {
 
 enum { ANALOG_XP = 0, ANALOG_XM, ANALOG_YP, ANALOG_YM };
 
+#if SDL_VERSION_ATLEAST(2,0,0)
+SDL_GameControllerButton controllerMap[DKEY_TOTAL];	
+#endif
+
 typedef struct tagPadDef {
 	int8_t			DevNum;
 	uint16_t		Type;
 	uint8_t			VisualVibration;
 	KEYDEF			KeyDef[DKEY_TOTAL];
 	KEYDEF			AnalogDef[ANALOG_TOTAL][4];
+#if SDL_VERSION_ATLEAST(2,0,0)
+	int8_t			UseSDL2;
+#endif
 } PADDEF;
 
 typedef struct tagEmuDef {
@@ -187,7 +196,8 @@ typedef struct tagPadState {
 	uint8_t				Vib0, Vib1;
 	volatile uint8_t	VibF[2];
 #if SDL_VERSION_ATLEAST(2,0,0)
-	SDL_Haptic		*haptic;
+	SDL_Haptic			*haptic;
+	SDL_GameController	*GCDev;
 #else
 #ifdef __linux__
 	int			VibrateDev;
